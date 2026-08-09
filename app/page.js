@@ -6,10 +6,10 @@ const FRAME_SIZE = 1024;
 const FRAME_CX = 512, FRAME_CY = 512, FRAME_R = 242;
 
 const CARD_W = 768, CARD_H = 1376;
-const SLOT_SIZE = 280;
-const SLOT_X = (CARD_W - SLOT_SIZE) / 2;
-const SLOT_Y = 690;
-const SLOT_RADIUS = 24;
+// Photo slot is now a circle (previous rounded-square is gone with the new template)
+const CARD_CX = 383.5, CARD_CY = 687.5, CARD_R = 162.5;
+// Info panel — name / role / title live inside this pre-drawn dark green rounded rect
+const PANEL_X0 = 144, PANEL_Y0 = 912, PANEL_X1 = 622, PANEL_Y1 = 1140;
 
 const STAGE = 300; // internal drawing resolution of the positioner, independent of display size
 
@@ -185,105 +185,78 @@ export default function Home() {
     ctx.clearRect(0, 0, CARD_W, CARD_H);
     ctx.drawImage(cardImgRef.current, 0, 0, CARD_W, CARD_H);
 
-    const chipW = 170, chipH = 34, chipX = (CARD_W - chipW) / 2, chipY = 636;
-    ctx.fillStyle = '#134e2e';
-    roundRectPath(ctx, chipX, chipY, chipW, chipH, 17);
-    ctx.fill();
-    ctx.fillStyle = '#eecb2b';
-    ctx.font = "700 15px 'Baloo 2'";
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText("HH GOA '26", CARD_W / 2, chipY + chipH / 2 + 1);
-
-    const factor = SLOT_SIZE / STAGE;
+    // photo — circular slot, mapped from the shared 300px positioner stage
+    const factor = (CARD_R * 2) / STAGE;
     const { w, h } = currentDrawSize();
-    const dx = SLOT_X + panRef.current.x * factor;
-    const dy = SLOT_Y + panRef.current.y * factor;
+    const dx = (CARD_CX - CARD_R) + panRef.current.x * factor;
+    const dy = (CARD_CY - CARD_R) + panRef.current.y * factor;
     const dw = w * factor, dh = h * factor;
 
     ctx.save();
-    roundRectPath(ctx, SLOT_X, SLOT_Y, SLOT_SIZE, SLOT_SIZE, SLOT_RADIUS);
+    ctx.beginPath();
+    ctx.arc(CARD_CX, CARD_CY, CARD_R, 0, Math.PI * 2);
     ctx.clip();
     ctx.drawImage(uploadedImgRef.current, dx, dy, dw, dh);
     ctx.restore();
 
-    ctx.strokeStyle = '#eecb2b';
-    ctx.lineWidth = 4;
-    roundRectPath(ctx, SLOT_X, SLOT_Y, SLOT_SIZE, SLOT_SIZE, SLOT_RADIUS);
-    ctx.stroke();
+    // panel content — name / role / title, laid out inside the template's pre-drawn dark green panel
+    const panelCx = (PANEL_X0 + PANEL_X1) / 2;
+    const maxTextWidth = (PANEL_X1 - PANEL_X0) - 52;
 
-    // name — bold poster-style lettering with a yellow outline + a hand-drawn underline
-    const displayName = name.trim() || 'Builder';
-    const nameY = 1016;
-    let nameSize = 40;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'alphabetic';
+
+    const displayName = name.trim() || 'Builder';
+    const nameY = PANEL_Y0 + 56;
+    let nameSize = 32;
     do {
       ctx.font = `800 ${nameSize}px 'Baloo 2'`;
-      if (ctx.measureText(displayName).width <= 640 || nameSize <= 22) break;
+      if (ctx.measureText(displayName).width <= maxTextWidth || nameSize <= 18) break;
       nameSize -= 2;
     } while (true);
-    ctx.lineJoin = 'round';
-    ctx.miterLimit = 2;
-    ctx.strokeStyle = '#eecb2b';
-    ctx.lineWidth = Math.max(6, nameSize * 0.2);
-    ctx.strokeText(displayName, CARD_W / 2, nameY);
-    ctx.fillStyle = '#134e2e';
-    ctx.fillText(displayName, CARD_W / 2, nameY);
+    ctx.fillStyle = '#eecb2b';
+    ctx.fillText(displayName, panelCx, nameY);
 
-    const nameWidth = ctx.measureText(displayName).width;
-    const squiggleW = Math.min(nameWidth + 24, 300);
-    const sy = nameY + 14, half = squiggleW / 2, cx = CARD_W / 2;
-    ctx.strokeStyle = '#eecb2b';
-    ctx.lineWidth = 4;
-    ctx.lineCap = 'round';
-    ctx.beginPath();
-    ctx.moveTo(cx - half, sy);
-    ctx.quadraticCurveTo(cx - half / 2, sy - 6, cx, sy);
-    ctx.quadraticCurveTo(cx + half / 2, sy + 6, cx + half, sy);
-    ctx.stroke();
-
-    ctx.fillStyle = '#126d41';
-    ctx.font = "500 18px 'Poppins'";
-    ctx.fillText(role.trim() || 'Builder at HH Goa', CARD_W / 2, 1058);
+    ctx.fillStyle = '#f4f2ea';
+    ctx.font = "500 15px 'Poppins'";
+    ctx.fillText(role.trim() || 'Builder at HH Goa', panelCx, nameY + 30);
 
     const label = titleForCard || currentTitle;
     if (label) {
-      ctx.font = "700 17px 'Baloo 2'";
+      ctx.font = "700 16px 'Baloo 2'";
       const textW = ctx.measureText(label).width;
-      const boltW = 16;
-      const pillW = textW + boltW + 56, pillH = 44;
-      const pillX = (CARD_W - pillW) / 2, pillY = 1078;
+      const boltW = 14;
+      const pillW = Math.min(textW + boltW + 50, maxTextWidth + 20), pillH = 40;
+      const pillX = panelCx - pillW / 2, pillY = nameY + 46;
       ctx.fillStyle = '#eecb2b';
       ctx.strokeStyle = '#134e2e';
-      ctx.lineWidth = 3;
-      roundRectPath(ctx, pillX, pillY, pillW, pillH, 22);
+      ctx.lineWidth = 2;
+      roundRectPath(ctx, pillX, pillY, pillW, pillH, 20);
       ctx.fill();
       ctx.stroke();
 
-      const bx = pillX + 24, by = pillY + pillH / 2;
+      const bx = pillX + 22, by = pillY + pillH / 2;
       ctx.fillStyle = '#134e2e';
       ctx.beginPath();
-      ctx.moveTo(bx + 3, by - 11);
-      ctx.lineTo(bx - 6, by + 2);
+      ctx.moveTo(bx + 3, by - 9);
+      ctx.lineTo(bx - 5, by + 2);
       ctx.lineTo(bx, by + 2);
-      ctx.lineTo(bx - 3, by + 11);
-      ctx.lineTo(bx + 7, by - 2);
+      ctx.lineTo(bx - 3, by + 9);
+      ctx.lineTo(bx + 6, by - 2);
       ctx.lineTo(bx + 1, by - 2);
       ctx.closePath();
       ctx.fill();
 
-      ctx.fillStyle = '#134e2e';
       ctx.textBaseline = 'middle';
       ctx.textAlign = 'left';
-      ctx.fillText(label, bx + 16, by + 1);
+      ctx.fillText(label, bx + 14, by + 1);
       ctx.textAlign = 'center';
       ctx.textBaseline = 'alphabetic';
     }
 
-    ctx.fillStyle = 'rgba(19,78,46,0.65)';
-    ctx.font = "500 14px 'Poppins'";
-    ctx.fillText('#FrameInGoa', CARD_W / 2, 1162);
+    ctx.fillStyle = 'rgba(244,242,234,0.7)';
+    ctx.font = "500 13px 'Poppins'";
+    ctx.fillText('#FrameInGoa', panelCx, PANEL_Y1 - 16);
   }
 
   async function composeAndShow(titleForCard) {
@@ -480,7 +453,7 @@ export default function Home() {
               onPointerLeave={onPointerUp}
             >
               <canvas ref={posCanvasRef} width={300} height={300} />
-              {format === 'A' && <div className="guide-circle" />}
+              <div className="guide-circle" />
               <div className="guide-crosshair" />
             </div>
             <div className="zoom-row">
