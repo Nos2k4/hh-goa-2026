@@ -369,32 +369,14 @@ export default function Home() {
     const caption = "Builder card, straight from Hacker House 'Goa' #FrameInGoa";
 
     try {
-      const blob = await canvasToBlob();
-      const fileName = 'hhgoa-builder-card.png';
-      const file = new File([blob], fileName, { type: 'image/png' });
-
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({ files: [file], text: caption });
-        setShareHint('');
-      } else {
-        // No native file sharing (typically desktop): upload once, then share a link
-        // whose Open Graph image is the generated PNG, so the X preview shows it.
-        const form = new FormData();
-        form.append('file', file);
-        const res = await fetch('/api/upload', { method: 'POST', body: form });
-        if (!res.ok) throw new Error('upload failed');
-        const { url, id } = await res.json();
-
-        const shareUrl = `${window.location.origin}/s/${id}?img=${encodeURIComponent(url)}&cap=${encodeURIComponent(caption)}`;
-        const intent = `https://twitter.com/intent/tweet?text=${encodeURIComponent(caption)}&url=${encodeURIComponent(shareUrl)}`;
-        window.open(intent, '_blank');
-        setShareHint('Opened the tweet composer with your image link attached.');
-      }
+      await downloadCanvasImage();
+      setTimeout(() => {
+        window.open(`https://x.com/compose/post?text=${encodeURIComponent(caption)}`, '_blank');
+      }, 300);
+      setShareHint('Image saved — attach it in the post that just opened.');
     } catch (err) {
-      if (err?.name !== 'AbortError') {
-        console.error(err);
-        setShareHint("Couldn't open share — try Download instead and post it manually.");
-      }
+      console.error(err);
+      setShareHint("Couldn't open X — try Download instead and post it manually.");
     } finally {
       setSharing(false);
     }
