@@ -344,17 +344,53 @@ export default function Home() {
     await downloadCanvasImage();
   }
 
+  // On many mobile browsers (iOS Safari especially) the <a download> trick used on
+  // desktop silently fails to actually save anything — it just opens the image inline.
+  // The reliable way to save on mobile is the native share sheet, which has a real
+  // "Save Image" action. This tries that first and only falls back to the anchor-download
+  // trick when the browser can't share files at all (i.e. desktop).
+  async function saveImage(file) {
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file] });
+      } catch (err) {
+        if (err?.name !== 'AbortError') console.error(err);
+        // user cancelling the share sheet isn't fatal — they can still use Download
+      }
+      return true; // took the mobile share-sheet path
+    }
+    const url = URL.createObjectURL(file);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = file.name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+    return false; // took the desktop anchor-download path
+  }
+
+  function goToX(target, usedShareSheet) {
+    if (usedShareSheet) {
+      // We just came back from an awaited share-sheet interaction, so a new tab via
+      // window.open can get silently blocked on mobile (the "user gesture" has gone
+      // stale by the time the promise resolves). A same-tab redirect isn't subject
+      // to that popup-blocker restriction.
+      window.location.href = target;
+    } else {
+      setTimeout(() => window.open(target, '_blank'), 300);
+    }
+  }
+
   async function handleSetProfilePhoto() {
     setSharing(true);
     setShareHint('');
     try {
-      await downloadCanvasImage();
-      // x.com/settings/profile deep-links straight into the X app on mobile if installed,
-      // landing right on the screen where tapping the avatar lets them pick the file we just saved.
-      setTimeout(() => {
-        window.open('https://x.com/settings/profile', '_blank');
-      }, 300);
-      setShareHint('Image saved — tap your profile photo on the X page that just opened to upload it.');
+      const blob = await canvasToBlob();
+      const file = new File([blob], 'hhgoa-frame.png', { type: 'image/png' });
+      const usedShareSheet = await saveImage(file);
+      goToX('https://x.com/settings/profile', usedShareSheet);
+      setShareHint('Image saved — tap your profile photo on the X page to upload it.');
     } catch (err) {
       console.error(err);
       setShareHint("Couldn't open X — try Download instead and update your profile photo manually in the app.");
@@ -366,13 +402,15 @@ export default function Home() {
   async function handleShare() {
     setSharing(true);
     setShareHint('');
-    const caption = "Builder card, straight from Hacker House 'Goa' #FrameInGoa";
+    const caption = "Builder card and custom profile frame, straight from Hacker House 'Goa',\n" +
+      "Make your own frame and id card at: https://newhh-goa-2026.vercel.app/\n\n" +
+      "#FrameInGoa #HHGoa2026";
 
     try {
-      await downloadCanvasImage();
-      setTimeout(() => {
-        window.open(`https://x.com/compose/post?text=${encodeURIComponent(caption)}`, '_blank');
-      }, 300);
+      const blob = await canvasToBlob();
+      const file = new File([blob], 'hhgoa-builder-card.png', { type: 'image/png' });
+      const usedShareSheet = await saveImage(file);
+      goToX(`https://x.com/compose/post?text=${encodeURIComponent(caption)}`, usedShareSheet);
       setShareHint('Image saved — attach it in the post that just opened.');
     } catch (err) {
       console.error(err);
