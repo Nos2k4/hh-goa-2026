@@ -328,7 +328,7 @@ export default function Home() {
     return new Promise((resolve) => finalCanvasRef.current.toBlob(resolve, 'image/png', 0.95));
   }
 
-  async function handleDownload() {
+  async function downloadCanvasImage() {
     const blob = await canvasToBlob();
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -340,16 +340,37 @@ export default function Home() {
     setTimeout(() => URL.revokeObjectURL(url), 4000);
   }
 
+  async function handleDownload() {
+    await downloadCanvasImage();
+  }
+
+  async function handleSetProfilePhoto() {
+    setSharing(true);
+    setShareHint('');
+    try {
+      await downloadCanvasImage();
+      // x.com/settings/profile deep-links straight into the X app on mobile if installed,
+      // landing right on the screen where tapping the avatar lets them pick the file we just saved.
+      setTimeout(() => {
+        window.open('https://x.com/settings/profile', '_blank');
+      }, 300);
+      setShareHint('Image saved — tap your profile photo on the X page that just opened to upload it.');
+    } catch (err) {
+      console.error(err);
+      setShareHint("Couldn't open X — try Download instead and update your profile photo manually in the app.");
+    } finally {
+      setSharing(false);
+    }
+  }
+
   async function handleShare() {
     setSharing(true);
     setShareHint('');
-    const caption = format === 'A'
-      ? "Just framed up my PFP at Hacker House 'Goa' #FrameInGoa"
-      : "Builder card, straight from Hacker House 'Goa' #FrameInGoa";
+    const caption = "Builder card, straight from Hacker House 'Goa' #FrameInGoa";
 
     try {
       const blob = await canvasToBlob();
-      const fileName = format === 'A' ? 'hhgoa-frame.png' : 'hhgoa-builder-card.png';
+      const fileName = 'hhgoa-builder-card.png';
       const file = new File([blob], fileName, { type: 'image/png' });
 
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
@@ -483,9 +504,15 @@ export default function Home() {
           </div>
           <div className="panel-controls">
             <button className="btn btn-accent" onClick={handleDownload}><i className="ti ti-download" /> Download image</button>
-            <button className="btn btn-primary" onClick={handleShare} disabled={sharing}>
-              {sharing ? <span className="spinner" /> : <i className="ti ti-brand-x" />} Share to X
-            </button>
+            {format === 'A' ? (
+              <button className="btn btn-primary" onClick={handleSetProfilePhoto} disabled={sharing}>
+                {sharing ? <span className="spinner" /> : <i className="ti ti-user-circle" />} Set as X profile photo
+              </button>
+            ) : (
+              <button className="btn btn-primary" onClick={handleShare} disabled={sharing}>
+                {sharing ? <span className="spinner" /> : <i className="ti ti-brand-x" />} Post to X
+              </button>
+            )}
             <button className="btn btn-ghost" onClick={resetToUpload}>Start over</button>
             <p className="hint">{shareHint}</p>
           </div>
