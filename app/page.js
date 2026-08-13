@@ -349,20 +349,26 @@ export default function Home() {
     await downloadCanvasImage();
   }
 
-  // On many mobile browsers (iOS Safari especially) the <a download> trick used on
-  // desktop silently fails to actually save anything — it just opens the image inline.
-  // The reliable way to save on mobile is the native share sheet, which has a real
-  // "Save Image" action. This tries that first and only falls back to the anchor-download
-  // trick when the browser can't share files at all (i.e. desktop).
+  // Apple blocks ALL silent file-writes from web pages on iOS — the share sheet (with its
+  // "Save Image" action) is the only way to save anything there, and no website can bypass
+  // that. Everywhere else (Android, desktop), a plain <a download> genuinely is silent —
+  // no dialog at all — so only route iOS through the share sheet; everyone else gets a
+  // real no-popup download.
+  function isIOS() {
+    if (typeof navigator === 'undefined') return false;
+    return /iP(hone|od|ad)/.test(navigator.userAgent) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  }
+
   async function saveImage(file) {
-    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    if (isIOS() && navigator.canShare && navigator.canShare({ files: [file] })) {
       try {
         await navigator.share({ files: [file] });
       } catch (err) {
         if (err?.name !== 'AbortError') console.error(err);
         // user cancelling the share sheet isn't fatal — they can still use Download
       }
-      return true; // took the mobile share-sheet path
+      return true; // took the iOS share-sheet path
     }
     const url = URL.createObjectURL(file);
     const a = document.createElement('a');
@@ -372,7 +378,7 @@ export default function Home() {
     a.click();
     a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 4000);
-    return false; // took the desktop anchor-download path
+    return false; // silent anchor-download path — Android and desktop
   }
 
   function goToX(target, usedShareSheet) {
