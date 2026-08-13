@@ -62,6 +62,7 @@ export default function Home() {
   const [sharing, setSharing] = useState(false);
   const [previewBroken, setPreviewBroken] = useState(false);
   const [assetError, setAssetError] = useState(false);
+  const [resultImageUrl, setResultImageUrl] = useState('');
 
   const posCanvasRef = useRef(null);
   const finalCanvasRef = useRef(null);
@@ -262,6 +263,10 @@ export default function Home() {
   async function composeAndShow(titleForCard) {
     if (format === 'A') composeFrame();
     else await composeCard(titleForCard);
+    // Mirror the canvas into a real <img> — long-press-to-save works natively on every
+    // mobile browser (including restrictive in-app webviews), unlike the Web Share API
+    // or the <a download> trick, both of which can silently fail depending on device/browser.
+    setResultImageUrl(finalCanvasRef.current.toDataURL('image/png'));
   }
 
   function resetToUpload() {
@@ -514,7 +519,9 @@ export default function Home() {
       <div className={`step ${step !== 'result' ? 'hidden' : ''}`}>
         <div className="panel">
           <div className="panel-visual result-wrap">
-            <canvas ref={finalCanvasRef} />
+            <canvas ref={finalCanvasRef} style={{ display: 'none' }} />
+            {resultImageUrl && <img src={resultImageUrl} alt="Generated result" className="result-image" />}
+            <p className="hint">Tip: press and hold the image to save it directly</p>
             {format === 'B' && currentTitle && (
               <div className="title-row">
                 <div className="title-pill"><i className="ti ti-bolt" /> {currentTitle}</div>

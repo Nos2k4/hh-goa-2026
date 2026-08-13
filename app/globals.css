@@ -167,9 +167,10 @@ input[type="file"]{ display:none; }
 }
 
 .result-wrap{ display:flex; flex-direction:column; align-items:center; gap:16px; }
-.result-wrap canvas{
+.result-wrap canvas, .result-wrap .result-image{
   width:100%; max-width:300px; border-radius:14px;
   border:2.5px solid var(--ink); box-shadow:4px 4px 0 var(--ink);
+  display:block;
 }
 .title-row{ display:flex; align-items:center; gap:10px; width:100%; }
 .title-pill{
@@ -209,22 +210,6 @@ input[type="file"]{ display:none; }
   .panel-controls{ flex:1; justify-content:center; min-width:260px; }
   #uploadVisual{ display:flex; }
   :root{ --stage-size:340px; }
-  .result-wrap canvas{ max-width:340px; }
+  .result-wrap canvas, .result-wrap .result-image{ max-width:340px; }
 }
 
-/* ---- Share landing page (/s/[id]) ---- */
-.share-page{
-  min-height:100vh; width:100%; display:flex; flex-direction:column;
-  align-items:center; justify-content:center; gap:20px; padding:32px 20px;
-  background:var(--dark-green); color:var(--white); text-align:center;
-}
-.share-page img{
-  max-width:320px; width:100%; border-radius:16px;
-  border:2.5px solid var(--ink); box-shadow:4px 4px 0 var(--ink);
-}
-.share-page h1{ font-family:'Bungee',sans-serif; font-size:20px; color:var(--yellow); margin:0; }
-.share-page a.btn-link{
-  font-family:'Baloo 2',sans-serif; font-weight:700; background:var(--yellow);
-  color:var(--ink); padding:12px 22px; border-radius:14px; text-decoration:none;
-  border:2.5px solid var(--ink); box-shadow:3px 3px 0 var(--ink);
-}
